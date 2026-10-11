@@ -152,8 +152,28 @@ Use a fresh `--session-id` value per agent task or conversation. If the runtime
 has a stable conversation/session id, derive the MCP `--session-id` from it.
 
 The MCP server exposes tools including `user_tabs`, `open_tab`, `claim_tab`,
-`navigate`, `wait_load`, `page_info`, `cdp`, `history`, `run_action_plan`,
-`finalize_tabs`, and unrestricted `call`.
+`navigate`, `wait_load`, `page_info`, `observe`, `act`, `run_task`, `cdp`, `history`,
+`run_action_plan`, `finalize_tabs`, and unrestricted `call`.
+
+Prefer `observe` and `act` for reading and operating a page. `observe` returns
+the tab as numbered controls in an outline grouped by region and heading, with
+values and state; `act` runs up to 20 steps (`click`, `type`, `select`,
+`check`, `press`, `scroll`, `wait`, `back`) on those indices with real mouse
+and keyboard input and returns the new outline. Each control is re-checked
+before input, so a step on a control that changed or is covered fails instead
+of clicking the wrong thing; observe again and retry. Scripts run in an
+isolated world the page cannot see. Cross-origin iframes are not read: use
+`cdp` for those. If `act` reports that Chrome detached the debugger, another
+extension (usually a password manager's inline menu) put a frame in the tab.
+
+`run_task` hands a concrete goal to a fast policy: TypeSafe Jev (through an
+OpenAI-compatible gateway with a System One endpoint) picks each operation and
+control from the outline, a small chat model writes field values, and `act`
+runs them. It returns `done`, `blocked`, `needs_owner`, `needs_info`,
+`needs_approval` or `limit` with the steps taken and the final page; check the
+page before trusting `done`. Configure it with `OBU_POLICY_BASE_URL`,
+`OBU_POLICY_API_KEY` or `OBU_POLICY_API_KEY_FILE`, `OBU_POLICY_MODEL`
+(default `jev-latest`) and `OBU_POLICY_TEXT_MODEL`.
 
 Use `run_action_plan` when the runtime wants to execute the same compact action
 plan format available through `open-browser-use run` without shelling out for

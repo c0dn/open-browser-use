@@ -167,6 +167,19 @@ dot；hyphen 版本 `com.ifuryst.open-computer-use.extension` 会被
   `user_tabs`、`open_tab`、`navigate`、`page_info`、`cdp`、
   `run_action_plan`、`finalize_tabs` 和 unrestricted `call`，适合 Codex
   等支持本地 MCP server 的 agent runtime 直接接入。
+- `internal/engine`：MCP `observe` / `act` 背后的快速页面引擎（移植自
+  Wayfarer / Maya / browser-use jev-ultrafast 的 snapshot 与 act）。通过
+  `executeCdp` 在 isolated world 里读取页面为编号控件，act 前重新校验控件
+  身份、可见性与遮挡，再用 `Input.*` 真实输入。每个文档开启一次
+  `Emulation.setFocusEmulationEnabled`，避免后台 tab 的输入确认延迟和定时器
+  节流。只读顶层文档和同源 iframe，不读跨源 iframe。
+- `internal/policy`：MCP `run_task` 背后的快速策略（移植自 Maya 的 Jev policy）。
+  每一步用一次 System One 请求（默认 `jev-latest`）选择操作及其目标控件，
+  `FILL_FORM` 一次设置多个字段并提交；字段值由小模型（默认
+  `gpt-5.6-luna--fast`，Responses API）生成。模型输出只能选择已观察到的
+  控件编号，不会变成选择器或代码。遇到密码、一次性验证码、可能花钱的操作、
+  连续三步无变化或步数上限即停止。网关、密钥与模型由 `OBU_POLICY_*`
+  环境变量配置。
 - CLI 便捷子命令覆盖当前 SDK 核心能力：`ping`、`info`、`tabs`、
   `user-tabs`、`history`、`open-tab`、`navigate`、`claim-tab`、
   `finalize-tabs`、`name-session`、`cdp`、`move-mouse`、

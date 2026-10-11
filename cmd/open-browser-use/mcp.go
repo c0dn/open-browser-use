@@ -20,6 +20,7 @@ const mcpProtocolVersion = "2025-06-18"
 type mcpServer struct {
 	options socketOptions
 	runner  *actionRunner
+	engine  enginePages
 }
 
 type mcpTool struct {
@@ -193,6 +194,10 @@ func mcpErrorResponse(id any, code int, message string) map[string]any {
 }
 
 func mcpTools() []mcpTool {
+	return append(baseMCPTools(), engineTools()...)
+}
+
+func baseMCPTools() []mcpTool {
 	return []mcpTool{
 		{
 			Name:        "ping",
@@ -474,6 +479,12 @@ func (server *mcpServer) runTool(name string, arguments map[string]any) (any, er
 		return server.runPageInfoTool(arguments)
 	case "cdp":
 		return server.runCDPTool(arguments)
+	case "observe":
+		return server.runObserveTool(arguments)
+	case "act":
+		return server.runActTool(arguments)
+	case "run_task":
+		return server.runTaskTool(arguments)
 	case "move_mouse":
 		return server.runMoveMouseTool(arguments)
 	case "wait_file_chooser":
