@@ -79,7 +79,8 @@ func (c Config) Run(ctx context.Context, p Page, goal string, opt Options) (*Res
 		return end(StatusNeedsApproval, "The goal may spend money; run it again with allow_spend once the owner agrees.")
 	}
 	rechecked := false
-	for len(res.Steps) < opt.MaxActions && res.Decisions < 2*opt.MaxActions {
+	// <= so the decision after the last allowed action can still report DONE; only an action past the limit stops it.
+	for len(res.Steps) <= opt.MaxActions && res.Decisions <= 2*opt.MaxActions {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
@@ -117,6 +118,9 @@ func (c Config) Run(ctx context.Context, p Page, goal string, opt Options) (*Res
 			return end(StatusNeedsOwner, "The page needs the owner (password, code, CAPTCHA, approval or payment consent).")
 		}
 		rechecked = false
+		if len(res.Steps) >= opt.MaxActions {
+			break
+		}
 
 		steps, item, stop, err := c.plan(ctx, d, page, goal, res.Steps, opt)
 		if err != nil {

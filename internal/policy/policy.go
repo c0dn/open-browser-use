@@ -28,7 +28,8 @@ WAIT only when the needed control is absent/disabled, or submitted results are s
 If Search/Submit is visible and the required fields are ready, CLICK it immediately.
 Recent WAIT actions are not evidence of loading. Prefer a useful visible control over WAIT.
 DONE requires visible evidence that ALL requirements are satisfied. If asked to open a result,
-a matching link is not enough. BLOCKED means no supported operation can make progress.
+a matching link is not enough. Once the current page shows every requirement met, choose DONE:
+do not click further, re-open, re-submit or check again. BLOCKED means no supported operation can make progress.
 NEEDS_OWNER means the page asks for something only the account owner can give: a password, a one-time
 code, a security key, a CAPTCHA, an approval on their phone, or consent to a payment.`
 
@@ -72,7 +73,7 @@ var operationText = map[Operation]string{
 	ScrollUp:   "Scroll up.",
 	Wait:       "Wait for the page to update.",
 	Back:       "Go back to the previous page.",
-	Done:       "Every requirement is visibly satisfied.",
+	Done:       "Every requirement is visibly satisfied on the current page; stop now rather than take another action.",
 	Blocked:    "No supported operation can progress.",
 	NeedsOwner: "The page needs the owner: a password, one-time code, CAPTCHA, phone approval or payment consent.",
 }

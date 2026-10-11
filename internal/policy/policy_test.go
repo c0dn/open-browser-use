@@ -141,6 +141,24 @@ func TestRunStopsWhenNothingChanges(t *testing.T) {
 	}
 }
 
+func TestRunReportsDoneAfterTheLastAllowedAction(t *testing.T) {
+	opened := formPage()
+	opened.Marker = json.RawMessage(`[2]`)
+	click := map[string]any{"operation": choice("CLICK"), "click_target": choice("3")}
+	cfg, seen := gateway(t, []map[string]any{click, {"operation": choice("DONE")}}, "")
+	res, err := cfg.Run(context.Background(), &fakePage{pages: []*engine.Observation{formPage(), opened}}, "x", Options{MaxActions: 1})
+	if err != nil || res.Status != StatusDone || len(res.Steps) != 1 {
+		t.Fatalf("%v %+v", err, res)
+	}
+
+	cfg, seen = gateway(t, []map[string]any{click, click}, "")
+	page := &fakePage{pages: []*engine.Observation{formPage(), opened}}
+	res, err = cfg.Run(context.Background(), page, "x", Options{MaxActions: 1})
+	if err != nil || res.Status != StatusLimit || len(res.Steps) != 1 || len(page.acts) != 1 || len(*seen) != 2 {
+		t.Fatalf("%v %+v acts=%d decisions=%d", err, res, len(page.acts), len(*seen))
+	}
+}
+
 func TestFieldTextNullMeansNeedsInfo(t *testing.T) {
 	cfg, _ := gateway(t, []map[string]any{{"operation": choice("TYPE_TEXT"), "type_text_target": choice("1")}}, `{"text": null}`)
 	res, err := cfg.Run(context.Background(), &fakePage{pages: []*engine.Observation{formPage()}}, "fill it", Options{})
