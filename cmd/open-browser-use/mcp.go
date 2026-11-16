@@ -18,9 +18,12 @@ import (
 const mcpProtocolVersion = "2025-06-18"
 
 type mcpServer struct {
-	options socketOptions
-	runner  *actionRunner
-	engine  enginePages
+	options     socketOptions
+	runner      *actionRunner
+	engine      enginePages
+	toolCatalog []mcpTool
+	toolHandler func(string, map[string]any) (any, error)
+	serverName  string
 }
 
 type mcpTool struct {
@@ -138,7 +141,11 @@ func (server *mcpServer) handleMessage(payload []byte) map[string]any {
 	case "ping":
 		return mcpResultResponse(request.ID, map[string]any{})
 	case "tools/list":
-		return mcpResultResponse(request.ID, map[string]any{"tools": mcpTools()})
+		tools := server.toolCatalog
+		if tools == nil {
+			tools = mcpTools()
+		}
+		return mcpResultResponse(request.ID, map[string]any{"tools": tools})
 	case "tools/call":
 		result, err := server.callTool(request.Params)
 		if err != nil {
@@ -151,6 +158,10 @@ func (server *mcpServer) handleMessage(payload []byte) map[string]any {
 }
 
 func (server *mcpServer) initializeResult(params json.RawMessage) map[string]any {
+	name := server.serverName
+	if name == "" {
+		name = "open-browser-use"
+	}
 	protocolVersion := mcpProtocolVersion
 	var value struct {
 		ProtocolVersion string `json:"protocolVersion"`
@@ -168,7 +179,7 @@ func (server *mcpServer) initializeResult(params json.RawMessage) map[string]any
 			},
 		},
 		"serverInfo": map[string]any{
-			"name":    "open-browser-use",
+			"name":    name,
 			"version": version,
 		},
 	}
@@ -440,7 +451,11 @@ func (server *mcpServer) callTool(params json.RawMessage) (map[string]any, error
 	if request.Arguments == nil {
 		request.Arguments = map[string]any{}
 	}
-	output, err := server.runTool(request.Name, request.Arguments)
+	handler := server.toolHandler
+	if handler == nil {
+		handler = server.runTool
+	}
+	output, err := handler(request.Name, request.Arguments)
 	if err != nil {
 		return mcpToolErrorResult(err.Error()), nil
 	}
@@ -667,10 +682,25 @@ func (server *mcpServer) runSetFileChooserFilesTool(arguments map[string]any) (a
 	return response, err
 }
 
+type mcpImageResult struct {
+	Data     string
+	MimeType string
+}
+
 func mcpToolResult(output any) (map[string]any, error) {
+	if image, ok := output.(mcpImageResult); ok {
+		return map[string]any{
+			"content": []map[string]any{{"type": "image", "data": image.Data, "mimeType": image.MimeType}},
+			"isError": false,
+		}, nil
+	}
 	payload, err := json.Marshal(output)
 	if err != nil {
 		return nil, err
+	}
+	structured := output
+	if _, ok := output.(map[string]any); !ok {
+		structured = map[string]any{"result": output}
 	}
 	return map[string]any{
 		"content": []map[string]any{
@@ -679,7 +709,7 @@ func mcpToolResult(output any) (map[string]any, error) {
 				"text": string(payload),
 			},
 		},
-		"structuredContent": output,
+		"structuredContent": structured,
 		"isError":           false,
 	}, nil
 }

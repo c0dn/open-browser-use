@@ -6,6 +6,16 @@ It also exposes the short `obu` command.
 The CLI is useful when your agent runtime is shell-first or when you want a
 small action plan instead of a JavaScript/Python SDK script.
 
+## Electron IAB
+
+CLI 1.1.0 and later include `obu iab` for Electron hosts using
+[`open-browser-use-electron`](../open-browser-use-electron/README.md).
+The host launches the command with private bootstrap on inherited FD 3;
+commands cannot discover an IAB or obtain authorization from a socket path.
+Private and authenticated socket modes support `info`, `ping`, `tabs`,
+`open-tab`, `navigate`, `close-tab`, `cdp`, `call` and `turn-ended`.
+See the [runnable example](../../examples/electron-iab/README.md).
+
 ## Install
 
 ```sh
@@ -163,6 +173,14 @@ The MCP server exposes browser tools such as `user_tabs`, `open_tab`,
 `run_action_plan`, `finalize_tabs`, and unrestricted `call`. It uses the same
 socket discovery as the CLI; pass `--socket <path>` or `--socket-dir <dir>` in
 `args` only when the runtime needs an explicit socket.
+
+For an embedded Electron IAB, use **`obu iab mcp`** through the Electron host's
+`runtime.launchClient({ args: ['iab', 'mcp'], stdin: 'pipe', ... })`. This route
+requires host-supplied FD 3 bootstrap, supports authenticated private/socket
+transport and never discovers Chrome sockets. A standalone MCP configuration
+cannot provide that authorization by itself. See the
+[Electron MCP integration](../open-browser-use-electron/README.md#iab-mcp-for-agents)
+for tools, lifecycle and a working reference client.
 
 ## Low-Level JSON-RPC
 
