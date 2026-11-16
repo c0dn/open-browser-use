@@ -1112,19 +1112,42 @@ class BrowserBackend {
     await this.publishCursorState(tabId);
   }
 
+  /**
+   * A session's tabs: the tabs in its tab group, plus the tabs it opened or claimed (tabOrigins) that still exist.
+   * The second half matters in browsers that do not keep extension tab groups: Vivaldi 8.3 turns them into its
+   * own tab stacks, and the group then reports no tabs although the session's tabs are still open.
+   */
   async getSessionTabs(sessionId) {
     const session = await this.store.getSession(sessionId);
-    if (typeof session.chromeGroupId !== "number") {
-      return [];
+    const byId = new Map();
+    let groupGone = typeof session.chromeGroupId !== "number";
+    if (!groupGone) {
+      try {
+        for (const tab of await chrome.tabs.query({ groupId: session.chromeGroupId })) {
+          if (hasTabId(tab)) byId.set(tab.id, tab);
+        }
+      } catch {
+        groupGone = true;
+      }
     }
-    try {
-      return (await chrome.tabs.query({ groupId: session.chromeGroupId })).filter(
-        (tab) => hasTabId(tab) && !tab.url?.startsWith("chrome://")
-      );
-    } catch {
+    let pruned = false;
+    for (const key of Object.keys(session.tabOrigins ?? {})) {
+      const tabId = Number(key);
+      if (byId.has(tabId)) continue;
+      try {
+        const tab = await chrome.tabs.get(tabId);
+        if (hasTabId(tab)) byId.set(tab.id, tab);
+      } catch {
+        delete session.tabOrigins[key]; // closed
+        pruned = true;
+      }
+    }
+    if (groupGone && byId.size === 0) {
       await this.store.removeSession(sessionId);
       return [];
     }
+    if (pruned) await this.store.save();
+    return [...byId.values()].filter((tab) => !tab.url?.startsWith("chrome://"));
   }
 
   async requireSession(params) {
