@@ -48,6 +48,13 @@ For Chrome Beta, register that browser explicitly:
 open-browser-use setup --browser chrome-beta
 ```
 
+For Vivaldi, pass `--browser vivaldi`; the native host manifest goes into
+Vivaldi's own `NativeMessagingHosts` directory:
+
+```sh
+open-browser-use setup --browser vivaldi --zip /absolute/path/to/open-browser-use-chrome-extension.zip
+```
+
 If an extension ZIP is already available locally, use it directly without a
 GitHub Release download:
 

@@ -470,6 +470,13 @@ func bitBrowserRootForTest(home, instance string) string {
 	return filepath.Join(home, "Library/Application Support/BitBrowser/BrowserCache", instance)
 }
 
+func vivaldiRootForTest(home string) string {
+	if runtime.GOOS == "linux" {
+		return filepath.Join(home, ".config/vivaldi")
+	}
+	return filepath.Join(home, "Library/Application Support/Vivaldi")
+}
+
 func writeLocalStateAtRoot(t *testing.T, root string, payload string) {
 	t.Helper()
 	if err := os.MkdirAll(root, 0o700); err != nil {
@@ -690,6 +697,94 @@ func TestListInstalledChromeProfilesIncludesSupportedBrowsers(t *testing.T) {
 	}
 	if got["bitbrowser:abc123:Default"].BrowserInstance != "abc123" {
 		t.Fatalf("expected BitBrowser instance, got %+v", got["bitbrowser:abc123:Default"])
+	}
+}
+
+func TestListInstalledChromeProfilesDetectsVivaldi(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Chrome profile detection is not implemented on windows")
+	}
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	writeExtensionManifestAtRoot(t, vivaldiRootForTest(home), "Default", defaultChromeExtensionID, "1.1.0")
+	writeLocalStateAtRoot(t, vivaldiRootForTest(home), `{"profile":{"info_cache":{"Default":{"name":"Personal"}}}}`)
+
+	profiles, err := listInstalledChromeProfiles()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(profiles) != 1 {
+		t.Fatalf("expected 1 Vivaldi profile, got %+v", profiles)
+	}
+	got := profiles[0]
+	if got.Browser != "vivaldi" || got.BrowserName != "Vivaldi" || got.Target != "vivaldi:Default" || got.DisplayName != "Personal" || got.Version != "1.1.0" {
+		t.Fatalf("unexpected Vivaldi profile: %+v", got)
+	}
+}
+
+func TestListInstalledChromeProfilesDetectsVivaldiUnpackedExtension(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Chrome profile detection is not implemented on windows")
+	}
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	betaID, err := extensionIDFromPublicKey(betaExtensionPublicKey)
+	if err != nil {
+		t.Fatalf("could not derive beta extension id: %v", err)
+	}
+	profileRoot := filepath.Join(vivaldiRootForTest(home), "Default")
+	unpackedDir := filepath.Join(profileRoot, "UnpackedExtensions", "open-browser-use-chrome-extension-1.1.0_test")
+	if err := os.MkdirAll(unpackedDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(unpackedDir, "manifest.json"), []byte(`{"version":"1.1.0"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	prefs := fmt.Sprintf(`{"extensions":{"settings":{%q:{"path":%q,"location":4}}}}`, betaID, unpackedDir)
+	if err := os.WriteFile(filepath.Join(profileRoot, "Secure Preferences"), []byte(prefs), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	profiles, err := listInstalledChromeProfiles()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(profiles) != 1 || profiles[0].Target != "vivaldi:Default" || profiles[0].ExtensionID != betaID {
+		t.Fatalf("expected unpacked Vivaldi profile, got %+v", profiles)
+	}
+}
+
+func TestResolveProfileForInstanceIDVivaldi(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Chrome profile detection is not implemented on windows")
+	}
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	writeLocalStateAtRoot(t, vivaldiRootForTest(home), `{"profile":{"info_cache":{"Default":{"name":"Personal"}}}}`)
+	writeExtensionStorageAtRoot(t, vivaldiRootForTest(home), "Default", defaultChromeExtensionID, "44444444-aaaa-bbbb-cccc-1234567890ab")
+
+	browserID, browserName, _, dir, name, ok := resolveProfileForInstanceID(defaultChromeExtensionID, "44444444-aaaa-bbbb-cccc-1234567890ab")
+	if !ok {
+		t.Fatal("expected to resolve Vivaldi instance")
+	}
+	if browserID != "vivaldi" || browserName != "Vivaldi" || dir != "Default" || name != "Personal" {
+		t.Fatalf("unexpected Vivaldi resolution: browser=%q name=%q dir=%q profile=%q", browserID, browserName, dir, name)
+	}
+}
+
+func TestNativeHostManifestPathForVivaldi(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("browser-specific native host manifest paths are macOS only")
+	}
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	got, err := defaultNativeHostManifestPathForBrowser("vivaldi")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(vivaldiRootForTest(home), "NativeMessagingHosts", host.NativeHostName+".json")
+	if got != want {
+		t.Fatalf("expected %q, got %q", want, got)
 	}
 }
 

@@ -1,5 +1,11 @@
 # 功能发布记录
 
+## 2026-11
+
+| 日期 | 功能域 | 用户价值 | 变更摘要 |
+| --- | --- | --- | --- |
+| 2026-11-17 | Vivaldi Profiles | Vivaldi users can see and select their installed, connected profile. | Add Vivaldi to profile discovery, instance-id resolution, and `--browser vivaldi` native host registration on macOS, Linux, and Windows. |
+
 ## 2026-10
 
 | 日期 | 功能域 | 用户价值 | 变更摘要 |

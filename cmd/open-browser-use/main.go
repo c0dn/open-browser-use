@@ -180,7 +180,7 @@ func newSetupCommand() *cobra.Command {
 	cmd.Flags().StringVar(&binaryPath, "path", "", "native host binary target for the stable host link")
 	cmd.Flags().StringVar(&externalExtensionOutput, "external-extension-output", "", "Chrome external extension JSON output path")
 	cmd.Flags().StringVar(&zipPath, "zip", "", "existing extension ZIP path; use it instead of the Chrome Web Store")
-	cmd.Flags().StringVar(&browser, "browser", "", "browser to register (chrome, chrome-beta, bitbrowser, or BitBrowser instance id)")
+	cmd.Flags().StringVar(&browser, "browser", "", "browser to register (chrome, chrome-beta, vivaldi, bitbrowser, or BitBrowser instance id)")
 	cmd.Flags().BoolVar(&noOpen, "no-open", false, "register Chrome integration without opening Chrome or the file manager")
 	cmd.AddCommand(newSetupBetaCommand())
 	return cmd
@@ -211,7 +211,7 @@ func newSetupBetaCommand() *cobra.Command {
 	cmd.Flags().StringVar(&extensionID, "extension-id", defaultChromeExtensionID, "Chrome extension id for allowed_origins")
 	cmd.Flags().StringVar(&binaryPath, "path", "", "native host binary target for the stable host link")
 	cmd.Flags().StringVar(&zipPath, "zip", "", "existing extension zip path; defaults to the latest GitHub Release zip")
-	cmd.Flags().StringVar(&browser, "browser", "", "browser to register (chrome, chrome-beta, bitbrowser, or BitBrowser instance id)")
+	cmd.Flags().StringVar(&browser, "browser", "", "browser to register (chrome, chrome-beta, vivaldi, bitbrowser, or BitBrowser instance id)")
 	cmd.Flags().BoolVar(&noOpen, "no-open", false, "download and unpack the extension without opening Chrome")
 	return cmd
 }
@@ -332,7 +332,7 @@ func newInstallManifestCommand() *cobra.Command {
 	cmd.Flags().StringVar(&extensionID, "extension-id", defaultChromeExtensionID, "Chrome extension id for allowed_origins")
 	cmd.Flags().StringVar(&binaryPath, "path", "", "native host binary target for the stable host link")
 	cmd.Flags().StringVar(&outputPath, "output", "", "native host manifest output path")
-	cmd.Flags().StringVar(&browser, "browser", "", "browser to register (chrome, chrome-beta, bitbrowser, or BitBrowser instance id)")
+	cmd.Flags().StringVar(&browser, "browser", "", "browser to register (chrome, chrome-beta, vivaldi, bitbrowser, or BitBrowser instance id)")
 	return cmd
 }
 
@@ -1142,7 +1142,7 @@ func addSocketFlags(cmd *cobra.Command, options *socketOptions) {
 	cmd.Flags().StringVar(&options.socketDir, "socket-dir", host.DefaultSocketDir, "directory containing active socket registry")
 	cmd.Flags().DurationVar(&options.timeout, "timeout", 10*time.Second, "request timeout")
 	cmd.Flags().StringVar(&options.sessionID, "session-id", options.sessionID, "browser session id used for tab grouping and cleanup")
-	cmd.Flags().StringVar(&options.browser, "browser", "", "browser selector (chrome, chrome-beta, bitbrowser, or display name)")
+	cmd.Flags().StringVar(&options.browser, "browser", "", "browser selector (chrome, chrome-beta, vivaldi, bitbrowser, or display name)")
 	cmd.Flags().StringVar(&options.profile, "profile", "", "Chrome profile selector (directory name like \"Default\" / \"Profile 1\" or display name like \"Eva\")")
 }
 
@@ -1576,6 +1576,11 @@ func supportedBrowserProfileRoots() ([]browserProfileRoot, error) {
 				BrowserName: "Google Chrome Beta",
 				Root:        filepath.Join(home, "Library/Application Support/Google/Chrome Beta"),
 			},
+			{
+				BrowserID:   "vivaldi",
+				BrowserName: "Vivaldi",
+				Root:        filepath.Join(home, "Library/Application Support/Vivaldi"),
+			},
 		}
 		bitBrowserRoots, err := bitBrowserProfileRoots(home)
 		if err != nil {
@@ -1584,11 +1589,18 @@ func supportedBrowserProfileRoots() ([]browserProfileRoot, error) {
 		roots = append(roots, bitBrowserRoots...)
 		return roots, nil
 	case "linux":
-		return []browserProfileRoot{{
-			BrowserID:   "chrome",
-			BrowserName: "Google Chrome",
-			Root:        filepath.Join(home, ".config/google-chrome"),
-		}}, nil
+		return []browserProfileRoot{
+			{
+				BrowserID:   "chrome",
+				BrowserName: "Google Chrome",
+				Root:        filepath.Join(home, ".config/google-chrome"),
+			},
+			{
+				BrowserID:   "vivaldi",
+				BrowserName: "Vivaldi",
+				Root:        filepath.Join(home, ".config/vivaldi"),
+			},
+		}, nil
 	case "windows":
 		localAppData := os.Getenv("LOCALAPPDATA")
 		if strings.TrimSpace(localAppData) == "" {
@@ -1604,6 +1616,11 @@ func supportedBrowserProfileRoots() ([]browserProfileRoot, error) {
 				BrowserID:   "chrome-beta",
 				BrowserName: "Google Chrome Beta",
 				Root:        filepath.Join(localAppData, "Google", "Chrome Beta", "User Data"),
+			},
+			{
+				BrowserID:   "vivaldi",
+				BrowserName: "Vivaldi",
+				Root:        filepath.Join(localAppData, "Vivaldi", "User Data"),
 			},
 		}, nil
 	default:
